@@ -1,4 +1,5 @@
-"""Explicit command-line analysis run: `python -m procurement.cli analyze <case_id> [YYYY-MM-DD] [--force]`.
+"""Explicit command-line analysis run:
+`python -m procurement.cli analyze <case_id> [YYYY-MM-DD] [--force] [--db PATH]`.
 
 Uses the same store/adapter as the UI. Prints safe run metadata, never the key.
 """
@@ -8,6 +9,7 @@ from __future__ import annotations
 import json
 import sys
 from datetime import date
+from pathlib import Path
 
 from . import config
 from .analysis import run_case_analysis
@@ -27,7 +29,8 @@ def main(argv: list[str]) -> int:
         return 2
     case_id = argv[1]
     as_of = date.fromisoformat(argv[2]) if len(argv) > 2 and not argv[2].startswith("--") else date.today()
-    store = Store(config.DEFAULT_DB_PATH)
+    db = Path(argv[argv.index("--db") + 1]) if "--db" in argv else config.DEFAULT_DB_PATH
+    store = Store(db)
     known = {c["case_id"] for c in discover_cases(config.REPO_ROOT)}
     if case_id not in known:
         print(f"Unknown case {case_id}; known: {sorted(known)}")

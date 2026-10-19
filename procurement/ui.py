@@ -23,6 +23,7 @@ from .store import Store
 from .updates import append_response, diff_analyses, mark_reviews_for_recheck
 
 FIXTURE_DIR = config.REPO_ROOT / "tests" / "fixtures"
+VIEWS = ["Requirements & gaps", "Customer update", "New information"]
 STATE_BADGE = {"found": "🟢 found", "partial": "🟡 partial", "missing": "🔴 missing", "conflicting": "🟣 conflicting"}
 
 
@@ -177,12 +178,18 @@ def render_workspace(store: Store, client: ModelClient | None) -> None:
         getattr(st, flash[0])(flash[1])
 
     analysis = CaseAnalysis.model_validate(run["analysis"]) if run else None
-    tab1, tab2, tab3 = st.tabs(["Requirements & gaps", "Customer update", "New information"])
-    with tab1:
+    # A keyed radio (not st.tabs) so the selected view survives the reruns that every action triggers.
+    active = st.query_params.get("view", VIEWS[0])
+    view = st.radio("View", VIEWS, index=VIEWS.index(active) if active in VIEWS else 0, horizontal=True,
+                    label_visibility="collapsed")
+    if view != active:
+        st.query_params["view"] = view
+    st.divider()
+    if view == VIEWS[0]:
         _requirements_tab(store, case_id, run, analysis, sources, sources_by_id, outdated)
-    with tab2:
+    elif view == VIEWS[1]:
         _customer_update_tab(store, case_id, run, analysis, sources_by_id, outdated, client)
-    with tab3:
+    else:
         _new_information_tab(store, case_id, run, analysis, sources, sources_by_id, as_of, client, force, outdated)
 
 

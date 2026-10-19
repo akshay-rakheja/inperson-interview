@@ -342,7 +342,7 @@ def _customer_update_tab(store, case_id, run, analysis, sources_by_id, outdated,
     else:
         options = [a.requirement_key for a in analysis.assessments]
         titles = {a.requirement_key: f"{a.title} ({a.evidence_state})" for a in analysis.assessments}
-        selected = st.multiselect("Findings to include", options, format_func=lambda k: titles[k],
+        selected = st.multiselect("Requirements to include", options, format_func=lambda k: titles[k],
                                   key=f"sel-{case_id}")
         if outdated:
             st.warning("The displayed analysis is outdated. Reanalyse before generating a new draft.")

@@ -3,7 +3,7 @@
   "label": "DEMO: Engineering reports pilot connector configuration verification (simulated)",
   "reported_author": "Dev (Engineering)",
   "simulated": true,
-  "effective_date_text": "2026-10-20",
+  "effective_date_text": "2026-10-19",
   "related_question_ids": ["Q-015", "Q-016"],
-  "text": "SIMULATED DEMO INPUT - not an original case document.\nDev (Engineering), 2026-10-20: I reviewed the Northstar pilot workspace configuration. The only enabled connectors are the allowlisted network-support document connectors, granted read-only scopes. No write scopes are granted and external actions are disabled in the workspace policy.\nThe configuration export is not attached to this note. Northstar's AI Governance review has not taken place yet."
+  "text": "SIMULATED DEMO INPUT - not an original case document.\nDev (Engineering), 2026-10-19: I reviewed the Northstar pilot workspace configuration. The only enabled connectors are the allowlisted network-support document connectors, granted read-only scopes. No write scopes are granted and external actions are disabled in the workspace policy.\nThe configuration export is not attached to this note. Northstar's AI Governance review has not taken place yet."
 }

@@ -3,7 +3,7 @@
   "label": "DEMO: Engineering confirms application-log retention only (simulated)",
   "reported_author": "Anthony (Engineering)",
   "simulated": true,
-  "effective_date_text": "2026-10-20",
+  "effective_date_text": "2026-10-19",
   "related_question_ids": ["Q-004"],
-  "text": "SIMULATED DEMO INPUT - not an original case document.\nAnthony (Engineering), 2026-10-20: I checked the Acme workspace settings and application-log retention is configured at 14 days.\nThis note covers application logs only. It does not cover observability traces, prompts, responses or source files, which are configured separately."
+  "text": "SIMULATED DEMO INPUT - not an original case document.\nAnthony (Engineering), 2026-10-19: I checked the Acme workspace settings and application-log retention is configured at 14 days.\nThis note covers application logs only. It does not cover observability traces, prompts, responses or source files, which are configured separately."
 }

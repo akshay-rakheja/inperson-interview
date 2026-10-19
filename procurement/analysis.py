@@ -121,10 +121,30 @@ def _render_source(src: SourceRecord) -> str:
     return f"<source {header}>\n{body}\n</source>"
 
 
+def _incremental_instructions(plan: dict, previous: CaseAnalysis) -> str:
+    by_key = {a.requirement_key: a for a in previous.assessments}
+    redo = "\n".join(json.dumps(by_key[k].model_dump(), ensure_ascii=False) for k in plan["reanalyse"])
+    carried = "\n".join(f"- {k}: {by_key[k].title} ({', '.join(by_key[k].question_ids)})" for k in plan["carry"])
+    return (
+        "INCREMENTAL UPDATE\n"
+        f"New sources since the previous run: {', '.join(plan['new_source_ids'])}.\n"
+        "Return `assessments` for exactly these requirement keys, reusing each key. Their previous assessments are "
+        "below as JSON. Start from them and change only what the new sources change; keep every statement, gap, "
+        "commitment, owner and qualifier whose citation is still valid.\n"
+        f"{redo}\n\n"
+        "Carried forward unchanged (do NOT output these; they are kept verbatim from the previous run):\n"
+        f"{carried}\n\n"
+        "Add a new assessment only if a new source raises a requirement that no key above covers. "
+        f"Previous summary (update it for the new sources): {previous.summary}\n\n"
+    )
+
+
 def build_payload(*, case_id: str, sources: list[SourceRecord], as_of_date: date,
-                  previous: CaseAnalysis | None) -> dict:
+                  previous: CaseAnalysis | None, plan: dict | None = None) -> dict:
     prev = ""
-    if previous is not None:
+    if previous is not None and plan and plan["mode"] == "incremental":
+        prev = _incremental_instructions(plan, previous)
+    elif previous is not None:
         prev_lines = [f"- {a.requirement_key}: {a.title} ({', '.join(a.question_ids)})" for a in previous.assessments]
         prev = "Previous requirement keys (reuse when the requirement is unchanged):\n" + "\n".join(prev_lines) + "\n\n"
     user = (
@@ -288,12 +308,95 @@ def sanitize_analysis(analysis: CaseAnalysis, sources: list[SourceRecord], case_
 
 
 def analyze_case(*, case_id: str, sources: list[SourceRecord], as_of_date: date, client: ModelClient,
-                 previous: CaseAnalysis | None = None) -> CaseAnalysis:
+                 previous: CaseAnalysis | None = None, plan: dict | None = None) -> CaseAnalysis:
     if any(s.case_id != case_id for s in sources):
         raise AnalysisValidationError(["sources from another case were supplied"])
-    payload = build_payload(case_id=case_id, sources=sources, as_of_date=as_of_date, previous=previous)
+    payload = build_payload(case_id=case_id, sources=sources, as_of_date=as_of_date, previous=previous, plan=plan)
     result = client.generate(task="case_analysis", payload=payload, schema=CaseAnalysis)
+    if previous is not None and plan and plan["mode"] == "incremental":
+        result = merge_incremental(previous, result, plan)
     return sanitize_analysis(result, sources, case_id, as_of_date)
+
+
+# ---------------------------------------------------------------------------
+# Incremental reanalysis: carry forward requirements that no new source touches
+# ---------------------------------------------------------------------------
+
+
+def plan_reanalysis(*, previous_run: dict | None, sources: list[SourceRecord], as_of_date: date,
+                    client: ModelClient, force: bool = False) -> dict:
+    """Decide which requirements to regenerate. Anything not provably scoped falls back to a full run.
+
+    Incremental only when: the previous run has the same date/model/prompt, every source it saw is
+    still current, and every new source is a pasted response scoped to requirement keys that exist
+    in the previous run. Carried items must still pass provenance checks against current sources.
+    """
+    def full(reason: str) -> dict:
+        return {"mode": "full", "reason": reason, "reanalyse": [], "carry": [], "new_source_ids": [], "reasons": {}}
+
+    if previous_run is None or not previous_run.get("analysis"):
+        return full("no previous successful run")
+    if force:
+        return full("full regeneration requested")
+    identity = input_identity(sources=sources, as_of_date=as_of_date, client=client)
+    for field in ("as_of_date", "provider", "base_url", "model", "prompt_version"):
+        if previous_run.get(field) != identity[field]:
+            return full(f"{field} changed since the previous run")
+    current = {s.source_id: s for s in sources}
+    gone = sorted(set(previous_run.get("source_ids") or []) - set(current))
+    if gone:
+        return full(f"source(s) changed or removed since the previous run: {', '.join(gone)}")
+    new = [current[sid] for sid in sorted(set(current) - set(previous_run.get("source_ids") or []))]
+    if not new:
+        return full("no new sources; regenerating the whole case")
+    previous = CaseAnalysis.model_validate(previous_run["analysis"])
+    keys = [a.requirement_key for a in previous.assessments]
+    reasons: dict[str, list[str]] = {}
+    for src in new:
+        related = src.metadata.get("related_keys") or []
+        if src.kind != "response":
+            return full(f"new source {src.source_id} is not a scoped response")
+        if not related:
+            return full(f"new source {src.source_id} names no related requirements")
+        unknown = [k for k in related if k not in keys]
+        if unknown:
+            return full(f"new source {src.source_id} names requirements not in the previous run: {unknown}")
+        for k in related:
+            reasons.setdefault(k, []).append(f"related to new source {src.source_id}")
+    for a, where, holder in _iter_ref_holders(previous):
+        if a.requirement_key in reasons:
+            continue
+        for ref in holder.refs:
+            fixed, problem = check_ref(ref, current, previous.case_id)
+            if fixed is None or fixed != ref:
+                reasons.setdefault(a.requirement_key, []).append(f"provenance no longer validates ({where}): {problem}")
+                break
+    return {
+        "mode": "incremental",
+        "reason": f"{len(new)} new scoped response(s)",
+        "reanalyse": [k for k in keys if k in reasons],
+        "carry": [k for k in keys if k not in reasons],
+        "new_source_ids": [s.source_id for s in new],
+        "reasons": reasons,
+    }
+
+
+def merge_incremental(previous: CaseAnalysis, partial: CaseAnalysis, plan: dict) -> CaseAnalysis:
+    """Previous order; carried items verbatim; reanalysed items from the model; new keys appended."""
+    returned = {a.requirement_key: a for a in partial.assessments}
+    missing = [k for k in plan["reanalyse"] if k not in returned]
+    if missing:
+        raise AnalysisValidationError([f"incremental run did not return requirement(s) due for reanalysis: {missing}"])
+    carry = set(plan["carry"])
+    prev_keys = {a.requirement_key for a in previous.assessments}
+    merged = [a.model_copy(deep=True) if a.requirement_key in carry else returned[a.requirement_key]
+              for a in previous.assessments]
+    merged += [a for k, a in returned.items() if k not in prev_keys]
+    warnings = [f"[incremental] reanalysed {len(plan['reanalyse'])} requirement(s) affected by "
+                f"{', '.join(plan['new_source_ids'])}; carried forward {len(carry)} unchanged with citations "
+                "revalidated"]
+    warnings += [f"[incremental] model output for carried-forward {k} discarded" for k in returned if k in carry]
+    return partial.model_copy(update={"assessments": merged, "warnings": warnings + list(partial.warnings)})
 
 
 # ---------------------------------------------------------------------------
@@ -322,7 +425,11 @@ def current_input_hash(store: Store, case_id: str, as_of_date: date, client: Mod
 
 def run_case_analysis(*, store: Store, case_id: str, as_of_date: date, client: ModelClient,
                       force: bool = False) -> dict:
-    """Explicit user action. Returns {"run": payload, "reused": bool}."""
+    """Explicit user action. Returns {"run": payload, "reused": bool}.
+
+    `force` skips the cache and regenerates the whole case; otherwise new scoped responses only
+    regenerate the requirements they relate to (see plan_reanalysis).
+    """
     sources = store.get_sources(case_id)
     identity = input_identity(sources=sources, as_of_date=as_of_date, client=client)
     ihash = input_hash(identity)
@@ -332,16 +439,23 @@ def run_case_analysis(*, store: Store, case_id: str, as_of_date: date, client: M
             return {"run": cached, "reused": True}
     previous_run = store.latest_run(case_id)
     previous = CaseAnalysis.model_validate(previous_run["analysis"]) if previous_run else None
+    plan = plan_reanalysis(previous_run=previous_run, sources=sources, as_of_date=as_of_date, client=client,
+                           force=force)
     base = {
         **identity,
         "input_hash": ihash,
         "previous_run_id": previous_run["run_id"] if previous_run else None,
         "fake": bool(getattr(client, "is_fake", False)),
         "started_at": now_iso(),
+        "analysis_mode": plan["mode"],
+        "analysis_mode_reason": plan["reason"],
+        "reanalysed_keys": plan["reanalyse"],
+        "carried_keys": plan["carry"],
+        "reanalysis_reasons": plan["reasons"],
     }
     try:
         analysis = analyze_case(case_id=case_id, sources=sources, as_of_date=as_of_date, client=client,
-                                previous=previous)
+                                previous=previous, plan=plan)
         payload = {**base, "status": "success", "analysis": analysis.model_dump(), "error": None}
     except (LLMError, AnalysisValidationError) as exc:
         payload = {**base, "status": "failed", "analysis": None, "error": str(exc),

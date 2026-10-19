@@ -74,7 +74,8 @@ def _sidebar(client: ModelClient | None) -> tuple[dict, object, bool]:
     case = st.sidebar.selectbox("Case folder", cases, format_func=lambda c: f"{c['folder']} — {c['title'][:40]}")
     as_of = st.sidebar.date_input("Assessment date (America/Toronto)", value=toronto_today(), key="as_of")
     st.sidebar.caption(f"Assessing as of **{as_of.isoformat()}**. Expiry interpretation depends on this date.")
-    force = st.sidebar.checkbox("Force a fresh model run (ignore cached result)", value=False)
+    force = st.sidebar.checkbox("Force a fresh full-case run (ignore cache; regenerate every requirement)",
+                                value=False)
     st.sidebar.divider()
     st.sidebar.subheader("Model configuration")
     if settings.has_key:
@@ -100,11 +101,13 @@ def _run_label(run: dict) -> str:
     returned = meta.get("returned_model")
     return (f"`{run['run_id']}` · {run['created_at']} · as of {run['as_of_date']} · {kind} · "
             f"{run['provider']} `{run['model']}`" + (f" (returned `{returned}`)" if returned else "")
-            + f" · prompt {run['prompt_version']}")
+            + f" · prompt {run['prompt_version']}"
+            + (f" · incremental ({len(run.get('carried_keys') or [])} carried forward)"
+               if run.get("analysis_mode") == "incremental" else ""))
 
 
 def _do_analysis(store: Store, case_id: str, as_of, client: ModelClient, force: bool) -> None:
-    with st.spinner("Running one full-case analysis request… (this can take a few minutes)"):
+    with st.spinner("Running one analysis request… (this can take a few minutes)"):
         result = run_case_analysis(store=store, case_id=case_id, as_of_date=as_of, client=client, force=force)
     run = result["run"]
     if result["reused"]:
@@ -113,8 +116,12 @@ def _do_analysis(store: Store, case_id: str, as_of, client: ModelClient, force: 
         rechecked = 0
         if run.get("previous_run_id"):
             rechecked = mark_reviews_for_recheck(store, case_id, run["run_id"],
-                                                 CaseAnalysis.model_validate(run["analysis"]))
-        st.session_state["flash"] = ("success", f"Analysis run {run['run_id']} succeeded."
+                                                 CaseAnalysis.model_validate(run["analysis"]),
+                                                 unchanged_keys=set(run.get("carried_keys") or []))
+        scope = (f" Reanalysed {len(run['reanalysed_keys'])} requirement(s); carried forward "
+                 f"{len(run['carried_keys'])} unchanged." if run.get("analysis_mode") == "incremental"
+                 else f" Full-case run ({run.get('analysis_mode_reason', 'full')}).")
+        st.session_state["flash"] = ("success", f"Analysis run {run['run_id']} succeeded." + scope
                                      + (f" {rechecked} review note(s) marked for recheck." if rechecked else ""))
     else:
         st.session_state["flash"] = ("error", f"Analysis failed; the previous successful run is still shown. "

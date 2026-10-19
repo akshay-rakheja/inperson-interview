@@ -46,6 +46,8 @@ def main(argv: list[str]) -> int:
         "finish_reason": meta.get("finish_reason"),
         "tokens": {k: (meta.get("usage") or {}).get(k) for k in ("prompt_tokens", "completion_tokens", "cost")},
         "assessments": len((run.get("analysis") or {}).get("assessments", [])),
+        "analysis_mode": run.get("analysis_mode"), "mode_reason": run.get("analysis_mode_reason"),
+        "reanalysed_keys": run.get("reanalysed_keys"), "carried": len(run.get("carried_keys") or []),
         "warnings": (run.get("analysis") or {}).get("warnings", []),
     }, indent=2))
     return 0 if run["status"] == "success" else 1

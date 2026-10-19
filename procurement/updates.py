@@ -141,12 +141,18 @@ def diff_analyses(before: CaseAnalysis, after: CaseAnalysis) -> dict:
     }
 
 
-def mark_reviews_for_recheck(store: Store, case_id: str, new_run_id: str, analysis: CaseAnalysis) -> int:
-    """After a successful reanalysis, every factual review note needs recheck; owner overrides persist."""
+def mark_reviews_for_recheck(store: Store, case_id: str, new_run_id: str, analysis: CaseAnalysis,
+                             unchanged_keys: set[str] = frozenset()) -> int:
+    """After a successful reanalysis, factual review notes need recheck; owner overrides persist.
+
+    Notes on `unchanged_keys` (requirements carried forward verbatim) still apply to the same text.
+    """
     keys = {a.requirement_key for a in analysis.assessments}
     count = 0
     for review in store.get_reviews(case_id):
         if not review.get("review_note") or review.get("recheck_against_run") == new_run_id:
+            continue
+        if review["requirement_key"] in unchanged_keys:
             continue
         reason = ("requirement no longer present in the new run" if review["requirement_key"] not in keys
                   else "analysis refreshed; prior review applied to older text")

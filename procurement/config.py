@@ -30,11 +30,12 @@ ENV_TEMPLATE = (
 )
 
 
-def ensure_env_file(path: Path = ENV_PATH) -> bool:
+def ensure_env_file(path: Path | None = None) -> bool:
     """Create the local .env template only if absent. Returns True if created.
 
     Never rewrites an existing file, so user-entered values are preserved.
     """
+    path = path or ENV_PATH
     if path.exists():
         return False
     path.write_text(ENV_TEMPLATE, encoding="utf-8")
@@ -45,9 +46,9 @@ def ensure_env_file(path: Path = ENV_PATH) -> bool:
     return True
 
 
-def load_env(path: Path = ENV_PATH) -> None:
+def load_env(path: Path | None = None) -> None:
     """Load the project-root .env explicitly; existing process variables win."""
-    load_dotenv(dotenv_path=path, override=False)
+    load_dotenv(dotenv_path=path or ENV_PATH, override=False)
 
 
 @dataclass(frozen=True)
@@ -56,7 +57,7 @@ class Settings:
     model: str
     provider: str = PROVIDER
     base_url: str = OPENROUTER_BASE_URL
-    env_path: str = str(ENV_PATH)
+    env_path: str = ""
 
     @property
     def status_message(self) -> str:
@@ -71,7 +72,7 @@ class Settings:
 def get_settings() -> Settings:
     key = os.environ.get(KEY_VAR, "").strip()
     model = os.environ.get(MODEL_VAR, "").strip() or DEFAULT_MODEL
-    return Settings(has_key=bool(key), model=model)
+    return Settings(has_key=bool(key), model=model, env_path=str(ENV_PATH))
 
 
 def get_api_key() -> str:

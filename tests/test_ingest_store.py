@@ -160,6 +160,7 @@ def test_app_starts_with_blank_key_and_makes_no_request(monkeypatch, tmp_path, r
 
     monkeypatch.setenv("OPENROUTER_API_KEY", "")
     monkeypatch.setattr(config, "DEFAULT_DB_PATH", tmp_path / "w.sqlite")
+    monkeypatch.setattr(config, "ENV_PATH", tmp_path / ".env")  # never touch the real repo-root .env
     at = AppTest.from_file(str(repo_root / "app.py"), default_timeout=30)
     at.run()
     assert not at.exception
@@ -167,3 +168,4 @@ def test_app_starts_with_blank_key_and_makes_no_request(monkeypatch, tmp_path, r
     assert "OPENROUTER_API_KEY=" in sidebar_text and str(config.ENV_PATH) in sidebar_text
     assert next(b for b in at.button if b.label == "Run analysis").disabled
     assert at.session_state["client"] is None
+    assert (tmp_path / ".env").exists()  # the template was created in the temp dir, not the repo

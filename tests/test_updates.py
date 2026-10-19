@@ -107,6 +107,9 @@ def test_diff_reports_changed_commitment_and_unchanged_blockers(cases_copy, tmp_
     assert pen["commitments"]["added"][0].endswith("[reported_owner_commitment; 2026-11-06]")
     assert f"{ACME}:Q-020" in diff["unchanged_open"] and f"{ACME}:Q-004" in diff["unchanged_open"]
     assert f"{ACME}:Q-008" in diff["still_open_after"]  # closure evidence still missing
+    assert set(diff["material"]) == {f"{ACME}:Q-008"}
+    assert "commitments changed" in diff["material"][f"{ACME}:Q-008"]
+    assert diff["new_citations"][f"{ACME}:Q-008"] == [resp.source_id]
 
 
 def test_added_and_removed_keys_are_reported_not_merged():

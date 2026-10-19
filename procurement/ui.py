@@ -488,24 +488,39 @@ def _new_information_tab(store, case_id, run, analysis, sources, sources_by_id, 
 def _render_diff(diff: dict, prev: dict, run: dict) -> None:
     st.caption(f"Comparing `{prev['run_id']}` → `{run['run_id']}` by stable requirement key. Rewording appears "
                "as change; this is not a semantic diff.")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Changed requirements", len(diff["changed"]))
-    c2.metric("Added / removed", f"{len(diff['added'])} / {len(diff['removed'])}")
-    c3.metric("Still open after refresh", len(diff["still_open_after"]))
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Material changes", len(diff["material"]))
+    c2.metric("Reworded only", len(diff["reworded_only"]))
+    c3.metric("Added / removed", f"{len(diff['added'])} / {len(diff['removed'])}")
+    c4.metric("Still open after refresh", len(diff["still_open_after"]))
+    st.caption("Material = evidence state, commitment terms or the number of explicit (source-stated) blockers changed, or the item now cites a "
+               "source the previous run did not. Still-open items keep their gaps visible in Requirements & gaps.")
     for key in diff["added"]:
         st.markdown(f"- ➕ **added** `{key}`")
     for key in diff["removed"]:
         st.markdown(f"- ➖ **removed** `{key}` (review whether it was merged or dropped)")
-    for key, fields in diff["changed"].items():
-        with st.expander(f"Changed: {key} ({', '.join(fields)})"):
-            for name, delta in fields.items():
-                st.markdown(f"**{name}**")
-                if "added" in delta:
-                    for x in delta["removed"]:
-                        st.text(f"  − {x}")
-                    for x in delta["added"]:
-                        st.text(f"  + {x}")
-                else:
-                    st.text(f"  before: {delta['before']}\n  after:  {delta['after']}")
+
+    def show(key: str, fields: dict) -> None:
+        for name, delta in fields.items():
+            st.markdown(f"**{name}**")
+            if "added" in delta:
+                for x in delta["removed"]:
+                    st.text(f"  − {x}")
+                for x in delta["added"]:
+                    st.text(f"  + {x}")
+            else:
+                st.text(f"  before: {delta['before']}\n  after:  {delta['after']}")
+
+    ordered = sorted(diff["material"].items(), key=lambda kv: (kv[0] not in diff["new_citations"], kv[0]))
+    for key, reasons in ordered:
+        with st.expander(f"Material: {key} — {'; '.join(reasons)}", expanded=True):
+            if key in diff["new_citations"]:
+                st.caption("Newly cited: " + ", ".join(diff["new_citations"][key]))
+            show(key, diff["changed"].get(key, {}))
+    if diff["reworded_only"]:
+        with st.expander(f"Reworded only ({len(diff['reworded_only'])}) — no state, commitment or new-source change"):
+            for key in diff["reworded_only"]:
+                st.markdown(f"**{key}**")
+                show(key, diff["changed"][key])
     if diff["unchanged_open"]:
         st.markdown("**Unchanged and still open:** " + ", ".join(f"`{k}`" for k in diff["unchanged_open"]))

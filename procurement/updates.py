@@ -64,6 +64,19 @@ def _dependencies(a) -> list[str]:
     return [f"{d.basis}: {d.description}" for d in a.dependencies]
 
 
+def _cited(a) -> set[str]:
+    return {r.source_id for h in [*a.current_position, *a.dependencies, *a.commitments] for r in h.refs}
+
+
+def _commitment_terms(a) -> list[tuple]:
+    return sorted((c.date_kind, c.date_iso, c.date_text) for c in a.commitments)
+
+
+def _explicit_dependency_count(a) -> int:
+    # Inferred dependencies churn between reruns; only source-stated blockers count as material.
+    return sum(d.basis == "explicit" for d in a.dependencies)
+
+
 FIELDS = {
     "evidence_state": lambda a: a.evidence_state,
     "current_position": _positions,
@@ -98,9 +111,28 @@ def diff_analyses(before: CaseAnalysis, after: CaseAnalysis) -> dict:
             changed[key] = delta
         elif a_[key].gaps or a_[key].evidence_state != "found":
             unchanged_open.append(key)
+    # A rerun rewords most text, so separate material signals from rewording.
+    before_cited = {sid for x in b.values() for sid in _cited(x)}
+    new_citations = {k: sorted(_cited(x) - before_cited) for k, x in a_.items() if _cited(x) - before_cited}
+    material = {}
+    for key in sorted(set(b) & set(a_)):
+        reasons = []
+        if b[key].evidence_state != a_[key].evidence_state:
+            reasons.append(f"evidence state {b[key].evidence_state} → {a_[key].evidence_state}")
+        if _commitment_terms(b[key]) != _commitment_terms(a_[key]):
+            reasons.append("commitments changed")
+        if _explicit_dependency_count(b[key]) != _explicit_dependency_count(a_[key]):
+            reasons.append("explicit blockers changed")
+        if key in new_citations:
+            reasons.append("cites new source(s)")
+        if reasons:
+            material[key] = reasons
     return {
         "added": sorted(set(a_) - set(b)),
         "removed": sorted(set(b) - set(a_)),
+        "material": material,
+        "new_citations": new_citations,
+        "reworded_only": sorted(k for k in changed if k not in material),
         "changed": changed,
         "unchanged_open": unchanged_open,
         "still_open_after": sorted(k for k, a in a_.items() if a.gaps or a.evidence_state != "found"),

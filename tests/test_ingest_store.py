@@ -152,3 +152,18 @@ def test_runtime_files_are_git_ignored(repo_root):
         result = subprocess.run(["git", "check-ignore", path], cwd=repo_root, capture_output=True)
         assert result.returncode == 0, path
     assert subprocess.run(["git", "check-ignore", ".env.example"], cwd=repo_root).returncode == 1
+
+
+def test_app_starts_with_blank_key_and_makes_no_request(monkeypatch, tmp_path, repo_root):
+    """Runs the real app.py entry point. A blank process-env key wins over .env (override=False)."""
+    from streamlit.testing.v1 import AppTest
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "")
+    monkeypatch.setattr(config, "DEFAULT_DB_PATH", tmp_path / "w.sqlite")
+    at = AppTest.from_file(str(repo_root / "app.py"), default_timeout=30)
+    at.run()
+    assert not at.exception
+    sidebar_text = " ".join(w.value for w in at.sidebar.warning)
+    assert "OPENROUTER_API_KEY=" in sidebar_text and str(config.ENV_PATH) in sidebar_text
+    assert next(b for b in at.button if b.label == "Run analysis").disabled
+    assert at.session_state["client"] is None

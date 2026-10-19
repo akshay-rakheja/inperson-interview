@@ -1,0 +1,22 @@
+[project]
+name = "procurement-workspace"
+version = "0.1.0"
+description = "Supplier-side procurement evidence workspace prototype"
+requires-python = ">=3.11"
+dependencies = [
+    "streamlit>=1.37",
+    "pydantic>=2.7",
+    "openai>=1.40",
+    "python-dotenv>=1.0",
+    "tzdata",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools]
+packages = ["procurement"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["live: makes a real, paid OpenRouter request (opt-in via RUN_LIVE=1)"]

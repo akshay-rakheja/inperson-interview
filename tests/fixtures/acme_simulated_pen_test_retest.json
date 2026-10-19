@@ -1,0 +1,9 @@
+{
+  "case_id": "case_1_acme_bank",
+  "label": "DEMO: Engineering pen-test remediation status and retest commitment (simulated)",
+  "reported_author": "Anthony (Engineering)",
+  "simulated": true,
+  "effective_date_text": "2026-10-20",
+  "related_question_ids": ["Q-008"],
+  "text": "SIMULATED DEMO INPUT - not an original case document.\nAnthony (Engineering), 2026-10-20: Our internal tickets show M-01 (internal service-token scope) and M-02 (rate-limit bypass under retry pattern) were remediated in March 2026.\nWe do not yet have independent closure evidence; this note does not include the retest report or ticket exports.\nCommitment: Engineering will request an external retest of M-01 and M-02 from the original testing firm, with the retest letter targeted for 2026-11-06."
+}

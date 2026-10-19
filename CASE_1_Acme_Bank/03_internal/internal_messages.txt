@@ -1,0 +1,8 @@
+Anthony: enterprise app logs should be 14d now.
+Dev: app logs yes; observability traces have separate configuration.
+Jai: Anthropic fallback for Acme?
+Anthony: globally yes; for Acme probably disable if residency/legal requires it. Not finalized.
+Anthony: Feb pen test had 2 mediums; remediated later, but need evidence.
+Legal: DPA blocked until subprocessors and cross-border transfers are confirmed.
+Jai: can we just say OpenAI?
+Legal: please don't guess in customer paperwork.

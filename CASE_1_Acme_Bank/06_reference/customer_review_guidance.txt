@@ -1,0 +1,4 @@
+Security reviews may request assurance, pen testing, encryption, IAM, incident response, BCP/DR and data flows.
+AI reviews are risk-based and commonly cover use case, models/providers, data, human oversight, evaluations,
+limitations, monitoring, tool/action controls and incidents. Customer-specific use/configuration matters.
+Procurement intake itself does not equal approval.

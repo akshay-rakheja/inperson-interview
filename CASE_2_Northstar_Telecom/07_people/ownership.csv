@@ -1,0 +1,8 @@
+person,role,likely_knowledge,response_pattern
+Jai,Commercial lead,customer process / manual procurement / deal context,fast for blockers
+Parsa,AI Engineering,AI architecture / questionnaire first pass,active
+Anthony,Engineering,security / infrastructure / deployment,slow during focus hours
+Mina,Legal,DPA / subprocessors / externally safe claims,prefers consolidated questions
+Sam,Finance,insurance / tax / financial docs,same-day usually
+Customer Procurement,Customer,process / vendor setup,1-2 business days
+Customer Risk Teams,Customer,review requirements,varies

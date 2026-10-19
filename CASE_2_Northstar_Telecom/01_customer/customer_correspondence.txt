@@ -1,0 +1,4 @@
+Priya, Strategic Sourcing: Complete Supplier, Security, Privacy, AI Governance and Technology Resilience reviews. Records Management may be triggered.
+Business Sponsor: Target launch Nov 16. Security and Privacy can run in parallel. AI Governance meets Wednesdays.
+AI Governance: Because the service retrieves internal documents and can call business tools, explain tool authorization, human oversight, evaluation and untrusted-content handling.
+Privacy: Clarify employee-data scope, inference geography, retention by data type and subprocessors.

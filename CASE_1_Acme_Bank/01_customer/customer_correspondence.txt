@@ -1,0 +1,4 @@
+Sep 10 - Nina, Business Sponsor: October production pilot is agreed in principle, subject to vendor onboarding.
+Sep 14 - Marcus, Procurement: Complete supplier profile, technology risk assessment, security evidence and AI governance intake. Answer for the configuration Acme would actually receive. If unknown, identify the owner rather than guessing.
+Sep 21 - Elena, Privacy: Clarify personal-information scope, whether content leaves Canada during processing, retention by data type, and subprocessors with content access.
+Sep 22 - Nina: The team is deciding whether the pilot stays synthetic-only or includes real customer-support transcripts. Please flag what that changes.

@@ -1,0 +1,3 @@
+Generic platform capabilities can differ from the service proposed to a particular customer.
+Old customer answers may be useful starting points, but should not silently become evidence for a new customer.
+Internal messages can be newer than formal documentation but may still require verification before external submission.

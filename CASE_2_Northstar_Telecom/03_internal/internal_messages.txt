@@ -1,0 +1,6 @@
+Jai: customer wants November launch.
+Parsa: taking technical first pass.
+Anthony: AWS persistence is Canada; model inference geography is separate.
+Legal: old subprocessor list is not approved for external use.
+Dev: connector permissions are workspace-specific. Generic product can do more than this pilot.
+Anthony: traces should redact payloads, but verify actual deployment.

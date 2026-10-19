@@ -1,0 +1,4 @@
+External penetration test - Feb 2026.
+No Critical or High findings. Two Medium findings were OPEN in the original report:
+M-01 internal service-token scope; M-02 rate-limit bypass under retry pattern.
+This file contains no remediation evidence.
